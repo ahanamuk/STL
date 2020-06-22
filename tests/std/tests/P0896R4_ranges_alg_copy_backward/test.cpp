@@ -47,8 +47,8 @@ int main() {
 struct instantiator {
     template <class In, class Out>
     static void call(In&& in = {}, Out out = {}) {
-        (void) ranges::copy_backward(in, std::move(out));
-        (void) ranges::copy_backward(ranges::begin(in), ranges::end(in), std::move(out));
+        (void) ranges::copy_backward(in, ranges::move(out));
+        (void) ranges::copy_backward(ranges::begin(in), ranges::end(in), ranges::move(out));
     }
 };
 
