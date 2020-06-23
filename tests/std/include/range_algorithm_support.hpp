@@ -926,6 +926,76 @@ struct with_forward_ranges {
 };
 
 template <class Continuation, class Element = int>
+struct with_bidirectional_ranges {
+    template <class... Args>
+    static constexpr void call() {
+        using namespace test;
+
+        // Ditto always Eq; !IsSized && Diff is uninteresting (ranges::size still works).
+        Continuation::template call<Args...,
+            range<bidi, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<bidi, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<bidi, Element, Sized::no, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<bidi, Element, Sized::no, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<bidi, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<bidi, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<bidi, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<bidi, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<bidi, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<bidi, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<bidi, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<bidi, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+
+        // Ditto always Eq; !IsSized && SizedSentinel is uninteresting (ranges::size works either way), as is
+        // !IsSized && IsCommon.
+        Continuation::template call<Args...,
+            range<random, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+
+        // Ditto always Eq; !IsSized && SizedSentinel is uninteresting (ranges::size still works), as is
+        // !IsSized && IsCommon. contiguous also implies !Proxy.
+        Continuation::template call<Args...,
+            range<contiguous, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<contiguous, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<contiguous, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<contiguous, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<contiguous, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
+    }
+};
+
+template <class Continuation, class Element = int>
 struct with_input_iterators {
     template <class... Args>
     static constexpr void call() {
@@ -985,6 +1055,11 @@ constexpr void test_in() {
 template <class Instantiator, class Element = int>
 constexpr void test_fwd() {
     with_forward_ranges<Instantiator, Element>::call();
+}
+
+template <class Instantiator, class Element = int>
+constexpr void test_bidi() {
+    with_bidirectional_ranges<Instantiator, Element>::call();
 }
 
 template <class Instantiator, class Element1 = int, class Element2 = int>

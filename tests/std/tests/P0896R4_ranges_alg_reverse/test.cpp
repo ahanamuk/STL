@@ -13,7 +13,8 @@ constexpr void smoke_test() {
 
     {
         int input[]           = {13, 42, 1367};
-        int expected_output[] = { 1367, 42, 13 } auto result = reverse(std::begin(input), std::end(input));
+        int expected_output[] = {1367, 42, 13};
+        auto result           = reverse(std::begin(input), std::end(input));
         for (int i = 0; i < 3; ++i) {
             assert(expected_output[i] == input[i]);
         }
@@ -22,7 +23,8 @@ constexpr void smoke_test() {
     }
     {
         int input[]           = {13, 42, 1367};
-        int expected_output[] = { 1367, 42, 13 } auto result = reverse(input);
+        int expected_output[] = {1367, 42, 13};
+        auto result           = reverse(input);
         for (int i = 0; i < 3; ++i) {
             assert(expected_output[i] == input[i]);
         }
@@ -37,11 +39,11 @@ int main() {
 }
 
 struct instantiator {
-    template <class Out>
-    static void call(Out out = {}) {
-        (void) ranges::reverse(out);
-        (void) ranges::move(ranges::begin(out), ranges::end(out));
+    template <class Bidi>
+    static void call(Bidi bidi = {}) {
+        (void) ranges::reverse(bidi);
+        (void) ranges::move(ranges::begin(bidi), ranges::end(bidi));
     }
 };
 
-template void test_out<instantiator>();
+template void test_bidi<instantiator>();
