@@ -11,6 +11,8 @@
 constexpr void smoke_test() {
     using ranges::copy_backward, ranges::copy_backward_result, ranges::iterator_t;
     using std::same_as;
+    using bidi_range = test::range<std::bidirectional_iterator_tag, test : Sized::no, test::CanDifference::no,
+        test::Common::no, test::CanCompare::yes, test::ProxyRef::yes>;
 
     // Validate that copy_backward_result aliases in_out_result
     STATIC_ASSERT(same_as<copy_backward_result<int, double>, ranges::in_out_result<int, double>>);
