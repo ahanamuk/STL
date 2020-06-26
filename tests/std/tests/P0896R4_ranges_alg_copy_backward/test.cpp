@@ -11,32 +11,35 @@
 constexpr void smoke_test() {
     using ranges::copy_backward, ranges::copy_backward_result, ranges::iterator_t;
     using std::same_as;
-    using bidi_range = test::range<std::bidirectional_iterator_tag, test : Sized::no, test::CanDifference::no,
-        test::Common::no, test::CanCompare::yes, test::ProxyRef::yes>;
+    using bidi_range_input  = test::range<std::bidirectional_iterator_tag, const int, test::Sized::no,
+        test::CanDifference::no, test::Common::no, test::CanCompare::yes, test::ProxyRef::yes>;
+    using bidi_range_output = test::range<std::bidirectional_iterator_tag, int, test::Sized::no,
+        test::CanDifference::no, test::Common::yes, test::CanCompare::yes, test::ProxyRef::yes>;
 
     // Validate that copy_backward_result aliases in_out_result
     STATIC_ASSERT(same_as<copy_backward_result<int, double>, ranges::in_out_result<int, double>>);
 
-    // Validate dangling story needed?
-
     int const input[] = {13, 42, 1729};
     { // Validate range overload
         int output[] = {-2, -2, -2};
-        auto result  = copy_backward(bidi_range{input}, bidi_range{output}.end());
+        bidi_range_input wrapped_input{input};
+        bidi_range_output wrapped_output{output};
+        auto result = copy_backward(wrapped_input, wrapped_output.end());
         STATIC_ASSERT(same_as<decltype(result),
-            copy_backward_result<iterator_t<bidi_range<int const>>, iterator_t<bidi_range<int>>>>);
-        assert(result.in == bidi_range{input}.begin());
-        assert(result.out == bidi_range{output}.begin());
+            copy_backward_result<iterator_t<bidi_range_input>, iterator_t<bidi_range_output>>>);
+        assert(result.in == wrapped_input.begin());
+        assert(result.out == wrapped_output.begin());
         assert(ranges::equal(output, input));
     }
     { // Validate iterator + sentinel overload
         int output[] = {-2, -2, -2};
-        bidi_range wrapped_input{input};
-        auto result = copy_backward(wrapped_input.begin(), wrapped_input.end(), bidi_range{output}.end());
+        bidi_range_input wrapped_input{input};
+        bidi_range_output wrapped_output{output};
+        auto result = copy_backward(wrapped_input.begin(), wrapped_input.end(), wrapped_output.end());
         STATIC_ASSERT(same_as<decltype(result),
-            copy_backward_result<iterator_t<bidi_range<int const>>, iterator_t<bidi_range<int>>>>);
+            copy_backward_result<iterator_t<bidi_range_input>, iterator_t<bidi_range_output>>>);
         assert(result.in == wrapped_input.begin());
-        assert(result.out == bidi_range{output}.begin());
+        assert(result.out == wrapped_output.begin());
         assert(ranges::equal(output, input));
     }
 }

@@ -1201,7 +1201,7 @@ namespace ranges {
         constexpr copy_backward_result<_It1, _It2> operator()(_It1 _First, _Se1 _Last, _It2 _Result) const {
             _Adl_verify_range(_First, _Last);
             auto _UFirst      = _Get_unwrapped(_STD move(_First));
-            auto _ULast = _Get_unwrapped(_STD move(_Last));
+            auto _ULast = _RANGES next(_UFirst, _Get_unwrapped(_STD move(_Last)));
             while (_ULast != _UFirst) {
                 *(--_Result) = *(--_ULast);
             }
