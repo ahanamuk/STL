@@ -62,8 +62,8 @@ struct boolish {
 };
 
 namespace test {
-    using std::assignable_from, std::conditional_t, std::copy_constructible, std::derived_from, std::exchange,
-        std::ptrdiff_t, std::span;
+    using std::assignable_from, std::conditional_t, std::convertible_to, std::copy_constructible, std::derived_from,
+        std::exchange, std::ptrdiff_t, std::span;
 
     using output     = std::output_iterator_tag;
     using input      = std::input_iterator_tag;
@@ -87,6 +87,12 @@ namespace test {
     enum class ProxyRef : bool { no, yes };
     enum class IsWrapped : bool { no, yes };
 
+    template <class T>
+    [[nodiscard]] constexpr bool to_bool(T const t) noexcept {
+        STATIC_ASSERT(std::is_enum_v<T> && std::same_as<std::underlying_type_t<T>, bool>);
+        return static_cast<bool>(t);
+    }
+
     template <class Element, IsWrapped Wrapped = IsWrapped::yes>
     class sentinel {
         Element* ptr_ = nullptr;
@@ -103,22 +109,54 @@ namespace test {
 
         using unwrap = sentinel<Element, IsWrapped::no>;
 
-        [[nodiscard]] constexpr auto _Unwrapped() const noexcept requires(bool(Wrapped)) {
+        [[nodiscard]] constexpr auto _Unwrapped() const noexcept requires(to_bool(Wrapped)) {
             return unwrap{ptr_};
         }
 
         static constexpr bool _Unwrap_when_unverified = true;
 
-        constexpr void _Seek_to(unwrap const& s) noexcept requires(bool(Wrapped)) {
+        constexpr void _Seek_to(unwrap const& s) noexcept requires(to_bool(Wrapped)) {
             ptr_ = s.base();
         }
     };
+
+    // clang-format off
+    template <class T, class U>
+    concept CanEq = requires(T const& t, U const& u) {
+        { t == u } -> convertible_to<bool>;
+    };
+
+    template <class T, class U>
+    concept CanNEq = requires(T const& t, U const& u) {
+        { t != u } -> convertible_to<bool>;
+    };
+
+    template <class T, class U>
+    concept CanLt = requires(T const& t, U const& u) {
+        { t < u } -> convertible_to<bool>;
+    };
+
+    template <class T, class U>
+    concept CanLtE = requires(T const& t, U const& u) {
+        { t <= u } -> convertible_to<bool>;
+    };
+
+    template <class T, class U>
+    concept CanGt = requires(T const& t, U const& u) {
+        { t > u } -> convertible_to<bool>;
+    };
+
+    template <class T, class U>
+    concept CanGtE = requires(T const& t, U const& u) {
+        { t >= u } -> convertible_to<bool>;
+    };
+    // clang-format on
 
     template <class Category, class Element>
     class proxy_reference {
         Element& ref_;
 
-        using ValueType = std::remove_cv_t<Element>;
+        using Value = std::remove_cv_t<Element>;
 
     public:
         constexpr explicit proxy_reference(Element& ref) : ref_{ref} {}
@@ -131,14 +169,78 @@ namespace test {
         }
 
         // clang-format off
-        constexpr operator ValueType() const requires derived_from<Category, input> && copy_constructible<ValueType> {
+        constexpr operator Value() const requires derived_from<Category, input> && copy_constructible<Value> {
             return ref_;
         }
         // clang-format on
 
-        constexpr void operator=(ValueType const& val) const requires assignable_from<Element&, ValueType const&> {
+        constexpr void operator=(Value const& val) const requires assignable_from<Element&, Value const&> {
             ref_ = val;
         }
+
+        template <class Cat, class Elem>
+        constexpr boolish operator==(proxy_reference<Cat, Elem> that) const requires CanEq<Element, Elem> {
+            return {ref_ == that.peek()};
+        }
+        template <class Cat, class Elem>
+        constexpr boolish operator!=(proxy_reference<Cat, Elem> that) const requires CanNEq<Element, Elem> {
+            return {ref_ != that.peek()};
+        }
+        template <class Cat, class Elem>
+        constexpr boolish operator<(proxy_reference<Cat, Elem> that) const requires CanLt<Element, Elem> {
+            return {ref_ < that.peek()};
+        }
+        template <class Cat, class Elem>
+        constexpr boolish operator>(proxy_reference<Cat, Elem> that) const requires CanGt<Element, Elem> {
+            return {ref_ > that.peek()};
+        }
+        template <class Cat, class Elem>
+        constexpr boolish operator<=(proxy_reference<Cat, Elem> that) const requires CanLtE<Element, Elem> {
+            return {ref_ <= that.peek()};
+        }
+        template <class Cat, class Elem>
+        constexpr boolish operator>=(proxy_reference<Cat, Elem> that) const requires CanGtE<Element, Elem> {
+            return {ref_ >= that.peek()};
+        }
+
+        // clang-format off
+        friend constexpr boolish operator==(proxy_reference ref, Value const& val) requires CanEq<Element, Value> {
+            return {ref.ref_ == val};
+        }
+        friend constexpr boolish operator==(Value const& val, proxy_reference ref) requires CanEq<Element, Value> {
+            return {ref.ref_ == val};
+        }
+        friend constexpr boolish operator!=(proxy_reference ref, Value const& val) requires CanNEq<Element, Value> {
+            return {ref.ref_ != val};
+        }
+        friend constexpr boolish operator!=(Value const& val, proxy_reference ref) requires CanNEq<Element, Value> {
+            return {ref.ref_ != val};
+        }
+        friend constexpr boolish operator<(Value const& val, proxy_reference ref) requires CanLt<Value, Element> {
+            return {val < ref.ref_};
+        }
+        friend constexpr boolish operator<(proxy_reference ref, Value const& val) requires CanLt<Element, Value> {
+            return {ref.ref_ < val};
+        }
+        friend constexpr boolish operator>(Value const& val, proxy_reference ref) requires CanGt<Value, Element> {
+            return {val > ref.ref_};
+        }
+        friend constexpr boolish operator>(proxy_reference ref, Value const& val) requires CanGt<Element, Value> {
+            return {ref.ref_ > val};
+        }
+        friend constexpr boolish operator<=(Value const& val, proxy_reference ref) requires CanLtE<Value, Element> {
+            return {val <= ref.ref_};
+        }
+        friend constexpr boolish operator<=(proxy_reference ref, Value const& val) requires CanLtE<Element, Value> {
+            return {ref.ref_ <= val};
+        }
+        friend constexpr boolish operator>=(Value const& val, proxy_reference ref) requires CanGtE<Value, Element> {
+            return {val >= ref.ref_};
+        }
+        friend constexpr boolish operator>=(proxy_reference ref, Value const& val) requires CanGtE<Element, Value> {
+            return {ref.ref_ >= val};
+        }
+        // clang-format on
 
         constexpr Element& peek() const noexcept {
             return ref_;
@@ -146,19 +248,6 @@ namespace test {
     };
 
     // clang-format off
-    template <class Cat1, class Elem1, class Cat2, class Elem2>
-    constexpr boolish operator==(proxy_reference<Cat1, Elem1> x, proxy_reference<Cat2, Elem2> y) requires requires {
-        { x.peek() == y.peek() } -> std::convertible_to<bool>;
-    } {
-        return {x.peek() == y.peek()};
-    }
-    template <class Cat1, class Elem1, class Cat2, class Elem2>
-    constexpr boolish operator!=(proxy_reference<Cat1, Elem1> x, proxy_reference<Cat2, Elem2> y) requires requires {
-        { x.peek() == y.peek() } -> std::convertible_to<bool>;
-    } {
-        return !(x == y);
-    }
-
     template <class Category, class Element,
         // Model sized_sentinel_for along with sentinel?
         CanDifference Diff = CanDifference{derived_from<Category, random>},
@@ -168,15 +257,15 @@ namespace test {
         ProxyRef Proxy = ProxyRef{!derived_from<Category, contiguous>},
         // Interact with the STL's iterator unwrapping machinery?
         IsWrapped Wrapped = IsWrapped::yes>
-        requires (bool(Eq) || !derived_from<Category, fwd>)
-            && (!bool(Proxy) || !derived_from<Category, contiguous>)
+        requires (to_bool(Eq) || !derived_from<Category, fwd>)
+            && (!to_bool(Proxy) || !derived_from<Category, contiguous>)
     class iterator {
         Element* ptr_;
 
         template <class T>
         static constexpr bool at_least = derived_from<Category, T>;
 
-        using ReferenceType = conditional_t<bool(Proxy), proxy_reference<Category, Element>, Element&>;
+        using ReferenceType = conditional_t<to_bool(Proxy), proxy_reference<Category, Element>, Element&>;
 
     public:
         // output iterator operations
@@ -190,7 +279,7 @@ namespace test {
             return *this;
         }
 
-        [[nodiscard]] constexpr Element* base() const& noexcept requires (bool(Eq)) {
+        [[nodiscard]] constexpr Element* base() const& noexcept requires (to_bool(Eq)) {
             return ptr_;
         }
         [[nodiscard]] constexpr Element* base() && noexcept {
@@ -265,12 +354,12 @@ namespace test {
         }
 
         // sentinel operations (implied by forward iterator):
-        iterator(iterator const&) requires (bool(Eq)) = default;
-        iterator& operator=(iterator const&) requires (bool(Eq)) = default;
-        [[nodiscard]] constexpr boolish operator==(iterator const& that) const noexcept requires (bool(Eq)) {
+        iterator(iterator const&) requires (to_bool(Eq)) = default;
+        iterator& operator=(iterator const&) requires (to_bool(Eq)) = default;
+        [[nodiscard]] constexpr boolish operator==(iterator const& that) const noexcept requires (to_bool(Eq)) {
             return {ptr_ == that.ptr_};
         }
-        [[nodiscard]] constexpr boolish operator!=(iterator const& that) const noexcept requires (bool(Eq)) {
+        [[nodiscard]] constexpr boolish operator!=(iterator const& that) const noexcept requires (to_bool(Eq)) {
             return !(*this == that);
         }
 
@@ -327,15 +416,15 @@ namespace test {
 
         // sized_sentinel_for operations:
         [[nodiscard]] constexpr ptrdiff_t operator-(iterator const& that) const noexcept
-            requires (bool(Diff) && bool(Eq)) || at_least<random> {
+            requires (to_bool(Diff) && to_bool(Eq)) || at_least<random> {
             return ptr_ - that.ptr_;
         }
         [[nodiscard]] constexpr ptrdiff_t operator-(sentinel<Element, Wrapped> const& s) const noexcept
-            requires (bool(Diff)) {
+            requires (to_bool(Diff)) {
             return ptr_ - s.base();
         }
         [[nodiscard]] friend constexpr ptrdiff_t operator-(
-            sentinel<Element, Wrapped> const& s, iterator const& i) noexcept requires (bool(Diff)) {
+            sentinel<Element, Wrapped> const& s, iterator const& i) noexcept requires (to_bool(Diff)) {
             return -(i - s);
         }
 
@@ -344,21 +433,21 @@ namespace test {
 
         using unwrap = iterator<Category, Element, Diff, Eq, Proxy, IsWrapped::no>;
 
-        [[nodiscard]] constexpr auto _Unwrapped() const& noexcept requires (bool(Wrapped) && bool(Eq)) {
+        [[nodiscard]] constexpr auto _Unwrapped() const& noexcept requires (to_bool(Wrapped) && to_bool(Eq)) {
             return unwrap{ptr_};
         }
 
-        [[nodiscard]] constexpr auto _Unwrapped() && noexcept requires (bool(Wrapped)) {
+        [[nodiscard]] constexpr auto _Unwrapped() && noexcept requires (to_bool(Wrapped)) {
             return unwrap{exchange(ptr_, nullptr)};
         }
 
         static constexpr bool _Unwrap_when_unverified = true;
 
-        constexpr void _Seek_to(unwrap const& i) noexcept requires (bool(Wrapped) && bool(Eq)) {
+        constexpr void _Seek_to(unwrap const& i) noexcept requires (to_bool(Wrapped) && to_bool(Eq)) {
             ptr_ = i.base();
         }
 
-        constexpr void _Seek_to(unwrap&& i) noexcept requires (bool(Wrapped)) {
+        constexpr void _Seek_to(unwrap&& i) noexcept requires (to_bool(Wrapped)) {
             ptr_ = std::move(i).base();
         }
     };
@@ -370,8 +459,8 @@ template <class Category, class Element, ::test::CanDifference Diff, ::test::Can
 struct std::iterator_traits<::test::iterator<Category, Element, Diff, Eq, Proxy, Wrapped>> {
     using iterator_concept  = Category;
     using iterator_category = conditional_t<derived_from<Category, forward_iterator_tag>, //
-        conditional_t<bool(Proxy), input_iterator_tag, Category>, //
-        conditional_t<bool(Eq), Category, void>>; // TRANSITION, LWG-3289
+        conditional_t<static_cast<bool>(Proxy), input_iterator_tag, Category>, //
+        conditional_t<static_cast<bool>(Eq), Category, void>>; // TRANSITION, LWG-3289
     using value_type        = remove_cv_t<Element>;
     using difference_type   = ptrdiff_t;
     using pointer           = conditional_t<derived_from<Category, contiguous_iterator_tag>, Element*, void>;
@@ -407,31 +496,22 @@ namespace test {
         CanCompare Eq = CanCompare{derived_from<Category, fwd>},
         // Use a ProxyRef reference type?
         ProxyRef Proxy = ProxyRef{!derived_from<Category, contiguous>}>
-        requires (!bool(IsCommon) || bool(Eq))
-            && (bool(Eq) || !derived_from<Category, fwd>)
-            && (!bool(Proxy) || !derived_from<Category, contiguous>)
-    class range : ranges::view_base {
+        requires (!to_bool(IsCommon) || to_bool(Eq))
+            && (to_bool(Eq) || !derived_from<Category, fwd>)
+            && (!to_bool(Proxy) || !derived_from<Category, contiguous>)
+    class range {
         span<Element> elements_;
         mutable bool begin_called_ = false;
 
     public:
         using I = iterator<Category, Element, Diff, Eq, Proxy, IsWrapped::yes>;
-        using S = conditional_t<bool(IsCommon), I, sentinel<Element, IsWrapped::yes>>;
+        using S = conditional_t<to_bool(IsCommon), I, sentinel<Element, IsWrapped::yes>>;
 
         range() = default;
         constexpr explicit range(span<Element> elements) noexcept : elements_{elements} {}
 
-        range(const range&) requires derived_from<Category, fwd> = default;
-        range& operator=(const range&) requires derived_from<Category, fwd> = default;
-
-        constexpr range(range&& that) noexcept
-            : elements_{exchange(that.elements_, {})}, begin_called_{that.begin_called_} {}
-
-        constexpr range& operator=(range&& that) noexcept {
-            elements_     = exchange(that.elements_, {});
-            begin_called_ = that.begin_called_;
-            return *this;
-        }
+        range(range const&) = delete;
+        range& operator=(range const&) = delete;
 
         [[nodiscard]] constexpr I begin() const noexcept {
             if constexpr (!derived_from<Category, fwd>) {
@@ -444,7 +524,7 @@ namespace test {
             return S{elements_.data() + elements_.size()};
         }
 
-        [[nodiscard]] constexpr ptrdiff_t size() const noexcept requires (bool(IsSized)) {
+        [[nodiscard]] constexpr ptrdiff_t size() const noexcept requires (to_bool(IsSized)) {
             if constexpr (!derived_from<Category, fwd>) {
                 assert(!begin_called_);
             }
@@ -456,7 +536,7 @@ namespace test {
         }
 
         using UI = iterator<Category, Element, Diff, Eq, Proxy, IsWrapped::no>;
-        using US = conditional_t<bool(IsCommon), I, sentinel<Element, IsWrapped::no>>;
+        using US = conditional_t<to_bool(IsCommon), I, sentinel<Element, IsWrapped::no>>;
 
         [[nodiscard]] constexpr UI _Unchecked_begin() const noexcept {
             return UI{elements_.data()};
@@ -477,25 +557,17 @@ namespace test {
 } // namespace test
 
 template <class T>
-class move_only_range : public test::range<test::input, T, test::Sized::no, test::CanDifference::no, test::Common::no,
-                            test::CanCompare::no, test::ProxyRef::no> {
-#if defined(__clang__) || defined(__EDG__) // TRANSITION, VSO-1132704
+class basic_borrowed_range : public test::range<test::input, T, test::Sized::no, test::CanDifference::no,
+                                 test::Common::no, test::CanCompare::no, test::ProxyRef::no> {
     using test::range<test::input, T, test::Sized::no, test::CanDifference::no, test::Common::no, test::CanCompare::no,
         test::ProxyRef::no>::range;
-#else // ^^^ no workaround / workaround vvv
-public:
-    constexpr move_only_range() = default;
-    constexpr explicit move_only_range(std::span<T> elements) noexcept : move_only_range::range{elements} {}
-    constexpr move_only_range(move_only_range&&) = default;
-    constexpr move_only_range& operator=(move_only_range&&) = default;
-#endif // TRANSITION, VSO-1132704
 };
 
 template <ranges::contiguous_range R>
-move_only_range(R&) -> move_only_range<std::remove_reference_t<ranges::range_reference_t<R>>>;
+basic_borrowed_range(R&) -> basic_borrowed_range<std::remove_reference_t<ranges::range_reference_t<R>>>;
 
 template <class T>
-inline constexpr bool ranges::enable_borrowed_range<::move_only_range<T>> = true;
+inline constexpr bool ranges::enable_borrowed_range<::basic_borrowed_range<T>> = true;
 
 template <int>
 struct unique_tag {};
@@ -521,6 +593,7 @@ struct with_writable_iterators {
     template <class... Args>
     static constexpr void call() {
         using namespace test;
+        using test::iterator;
 
         // Diff and Eq are not significant for "lone" single-pass iterators, so we can ignore them here.
         Continuation::template call<Args...,
@@ -560,75 +633,64 @@ struct with_writable_iterators {
 };
 
 template <class Continuation, class Element = int>
-struct with_input_ranges {
+struct with_contiguous_ranges {
     template <class... Args>
     static constexpr void call() {
         using namespace test;
 
-        // For all ranges, IsCommon implies Eq.
-        // For single-pass ranges, Eq is uninteresting without IsCommon (there's only one valid iterator
-        // value at a time, and no reason to compare it with itself for equality).
+        // Ditto always Eq; !IsSized && SizedSentinel is uninteresting (ranges::size still works), as is
+        // !IsSized && IsCommon. contiguous also implies !Proxy.
         Continuation::template call<Args...,
-            range<input, Element, Sized::no, CanDifference::no, Common::no, CanCompare::no, ProxyRef::no>>();
+            range<contiguous, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
         Continuation::template call<Args...,
-            range<input, Element, Sized::no, CanDifference::no, Common::no, CanCompare::no, ProxyRef::yes>>();
+            range<contiguous, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
         Continuation::template call<Args...,
-            range<input, Element, Sized::no, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
+            range<contiguous, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
         Continuation::template call<Args...,
-            range<input, Element, Sized::no, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+            range<contiguous, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<contiguous, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
+    }
+};
 
-        Continuation::template call<Args...,
-            range<input, Element, Sized::no, CanDifference::yes, Common::no, CanCompare::no, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<input, Element, Sized::no, CanDifference::yes, Common::no, CanCompare::no, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<input, Element, Sized::no, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<input, Element, Sized::no, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+template <class Continuation, class Element = int>
+struct with_random_ranges {
+    template <class... Args>
+    static constexpr void call() {
+        using namespace test;
 
+        // Ditto always Eq; !IsSized && SizedSentinel is uninteresting (ranges::size works either way), as is
+        // !IsSized && IsCommon.
         Continuation::template call<Args...,
-            range<input, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::no, ProxyRef::no>>();
+            range<random, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
         Continuation::template call<Args...,
-            range<input, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::no, ProxyRef::yes>>();
+            range<random, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
         Continuation::template call<Args...,
-            range<input, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
+            range<random, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
         Continuation::template call<Args...,
-            range<input, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+            range<random, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<random, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
 
-        Continuation::template call<Args...,
-            range<input, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::no, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<input, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::no, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<input, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<input, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+        with_contiguous_ranges<Continuation, Element>::template call<Args...>();
+    }
+};
 
-        // forward always has Eq; !IsSized && Diff is uninteresting (sized_range is sized_range).
-        Continuation::template call<Args...,
-            range<fwd, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<fwd, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<fwd, Element, Sized::no, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<fwd, Element, Sized::no, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<fwd, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<fwd, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<fwd, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<fwd, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<fwd, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<fwd, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<fwd, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<fwd, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+template <class Continuation, class Element = int>
+struct with_bidirectional_ranges {
+    template <class... Args>
+    static constexpr void call() {
+        using namespace test;
 
         // Ditto always Eq; !IsSized && Diff is uninteresting (ranges::size still works).
         Continuation::template call<Args...,
@@ -656,41 +718,7 @@ struct with_input_ranges {
         Continuation::template call<Args...,
             range<bidi, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
 
-        // Ditto always Eq; !IsSized && SizedSentinel is uninteresting (ranges::size works either way), as is
-        // !IsSized && IsCommon.
-        Continuation::template call<Args...,
-            range<random, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
-
-        // Ditto always Eq; !IsSized && SizedSentinel is uninteresting (ranges::size still works), as is
-        // !IsSized && IsCommon. contiguous also implies !Proxy.
-        Continuation::template call<Args...,
-            range<contiguous, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<contiguous, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<contiguous, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<contiguous, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<contiguous, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        with_random_ranges<Continuation, Element>::template call<Args...>();
     }
 };
 
@@ -861,67 +889,105 @@ struct with_forward_ranges {
         Continuation::template call<Args...,
             range<fwd, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
 
-        // Ditto always Eq; !IsSized && Diff is uninteresting (ranges::size still works).
-        Continuation::template call<Args...,
-            range<bidi, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<bidi, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<bidi, Element, Sized::no, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<bidi, Element, Sized::no, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<bidi, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<bidi, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<bidi, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<bidi, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<bidi, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<bidi, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<bidi, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<bidi, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+        with_bidirectional_ranges<Continuation, Element>::template call<Args...>();
+    }
+};
 
-        // Ditto always Eq; !IsSized && SizedSentinel is uninteresting (ranges::size works either way), as is
-        // !IsSized && IsCommon.
-        Continuation::template call<Args...,
-            range<random, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::yes>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
-        Continuation::template call<Args...,
-            range<random, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+template <class Continuation, class Element = int>
+struct with_input_ranges {
+    template <class... Args>
+    static constexpr void call() {
+        using namespace test;
 
-        // Ditto always Eq; !IsSized && SizedSentinel is uninteresting (ranges::size still works), as is
-        // !IsSized && IsCommon. contiguous also implies !Proxy.
+        // For all ranges, IsCommon implies Eq.
+        // For single-pass ranges, Eq is uninteresting without IsCommon (there's only one valid iterator
+        // value at a time, and no reason to compare it with itself for equality).
         Continuation::template call<Args...,
-            range<contiguous, Element, Sized::no, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
+            range<input, Element, Sized::no, CanDifference::no, Common::no, CanCompare::no, ProxyRef::no>>();
         Continuation::template call<Args...,
-            range<contiguous, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::yes, ProxyRef::no>>();
+            range<input, Element, Sized::no, CanDifference::no, Common::no, CanCompare::no, ProxyRef::yes>>();
         Continuation::template call<Args...,
-            range<contiguous, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
+            range<input, Element, Sized::no, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
         Continuation::template call<Args...,
-            range<contiguous, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::yes, ProxyRef::no>>();
+            range<input, Element, Sized::no, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+
         Continuation::template call<Args...,
-            range<contiguous, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
+            range<input, Element, Sized::no, CanDifference::yes, Common::no, CanCompare::no, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<input, Element, Sized::no, CanDifference::yes, Common::no, CanCompare::no, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<input, Element, Sized::no, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<input, Element, Sized::no, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+
+        Continuation::template call<Args...,
+            range<input, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::no, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<input, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::no, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<input, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<input, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+
+        Continuation::template call<Args...,
+            range<input, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::no, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<input, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::no, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<input, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<input, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+
+        with_forward_ranges<Continuation, Element>::template call<Args...>();
+    }
+};
+
+template <class Continuation, class Element = int>
+struct with_output_ranges {
+    template <class... Args>
+    static constexpr void call() {
+        using namespace test;
+
+        // For all ranges, IsCommon implies Eq.
+        // For single-pass ranges, Eq is uninteresting without IsCommon (there's only one valid iterator
+        // value at a time, and no reason to compare it with itself for equality).
+        Continuation::template call<Args...,
+            range<output, Element, Sized::no, CanDifference::no, Common::no, CanCompare::no, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<output, Element, Sized::no, CanDifference::no, Common::no, CanCompare::no, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<output, Element, Sized::no, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<output, Element, Sized::no, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+
+        Continuation::template call<Args...,
+            range<output, Element, Sized::no, CanDifference::yes, Common::no, CanCompare::no, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<output, Element, Sized::no, CanDifference::yes, Common::no, CanCompare::no, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<output, Element, Sized::no, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<output, Element, Sized::no, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+
+        Continuation::template call<Args...,
+            range<output, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::no, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<output, Element, Sized::yes, CanDifference::no, Common::no, CanCompare::no, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<output, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<output, Element, Sized::yes, CanDifference::no, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+
+        Continuation::template call<Args...,
+            range<output, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::no, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<output, Element, Sized::yes, CanDifference::yes, Common::no, CanCompare::no, ProxyRef::yes>>();
+        Continuation::template call<Args...,
+            range<output, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::no>>();
+        Continuation::template call<Args...,
+            range<output, Element, Sized::yes, CanDifference::yes, Common::yes, CanCompare::yes, ProxyRef::yes>>();
+
+        with_forward_ranges<Continuation, Element>::template call<Args...>();
     }
 };
 
@@ -985,6 +1051,21 @@ constexpr void test_in() {
 template <class Instantiator, class Element = int>
 constexpr void test_fwd() {
     with_forward_ranges<Instantiator, Element>::call();
+}
+
+template <class Instantiator, class Element = int>
+constexpr void test_bidi() {
+    with_bidirectional_ranges<Instantiator, Element>::call();
+}
+
+template <class Instantiator, class Element = int>
+constexpr void test_random() {
+    with_random_ranges<Instantiator, Element>::call();
+}
+
+template <class Instantiator, class Element = int>
+constexpr void test_contiguous() {
+    with_contiguous_ranges<Instantiator, Element>::call();
 }
 
 template <class Instantiator, class Element1 = int, class Element2 = int>
