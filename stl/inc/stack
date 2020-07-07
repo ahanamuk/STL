@@ -52,6 +52,12 @@ _NODISCARD bool operator>=(const stack<_Ty, _Container>& _Left, const stack<_Ty,
     return _Left.c >= _Right.c;
 }
 
+template <class _Ty, three_way_comparable _Container>
+_NODISCARD compare_three_way_result_t<_Container> operator<=>(
+    const stack<_Ty, _Container>& _Left, const stack<_Ty, _Container>& _Right) {
+    return _Left.c <=> _Right.c;
+}
+
 template <class _Ty, class _Container>
 class stack {
 public:
