@@ -577,6 +577,9 @@ public:
         return _Elems;
     }
 
+    // friend constexpr bool operator==(const array&, const array&) = default;
+    // friend constexpr auto operator<=>(const array&, const array&);
+
     [[noreturn]] void _Xran() const {
         _Xout_of_range("invalid array<T, N> subscript");
     }
@@ -761,6 +764,9 @@ public:
         return nullptr;
     }
 
+    // friend constexpr bool operator==(const array&, const array&) = default;
+    // friend constexpr auto operator<=>(const array&, const array&);
+
     [[noreturn]] void _Xran() const {
         _Xout_of_range("invalid array<T, 0> subscript");
     }
@@ -773,6 +779,7 @@ _CONSTEXPR20 void swap(array<_Ty, _Size>& _Left, array<_Ty, _Size>& _Right) noex
     return _Left.swap(_Right);
 }
 
+#if !_HAS_CXX20 || __cpp_impl_three_way_comparison < 201902L
 template <class _Ty, size_t _Size>
 _NODISCARD _CONSTEXPR20 bool operator==(const array<_Ty, _Size>& _Left, const array<_Ty, _Size>& _Right) {
     return _STD equal(_Left.begin(), _Left.end(), _Right.begin());
@@ -802,6 +809,7 @@ template <class _Ty, size_t _Size>
 _NODISCARD _CONSTEXPR20 bool operator>=(const array<_Ty, _Size>& _Left, const array<_Ty, _Size>& _Right) {
     return !(_Left < _Right);
 }
+#endif // !_HAS_CXX20 || __cpp_impl_three_way_comparison < 201902L
 
 #if _HAS_CXX20
 // FUNCTION TEMPLATE to_array
