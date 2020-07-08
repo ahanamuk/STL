@@ -24,6 +24,28 @@
 #include <utility>
 #include <vector>
 
+template <class Container>
+void ordered_containers_test(Container smaller, Container smaller_equal, Container larger) {
+    assert(smaller < larger);
+    assert(smaller <= larger);
+    assert(larger > smaller);
+    assert(larger >= smaller);
+    assert(smaller == smaller_equal);
+    assert(smaller != larger);
+    assert((smaller <=> larger) < 0);
+    assert((larger <=> smaller) > 0);
+    assert((smaller_equal <=> smaller) == 0);
+}
+
+template <class Container>
+void unordered_containers_test(Container smaller, Container smaller_equal, Container larger) {
+    assert(smaller == smaller_equal);
+    assert(smaller != larger);
+    // assert((smaller <=> larger) < 0);
+    // assert((larger <=> smaller) > 0);
+    // assert((smaller_equal <=> smaller) == 0);
+}
+
 void ordering_test_cases() {
     {
         // Array
@@ -35,64 +57,59 @@ void ordering_test_cases() {
         std::deque<int> a1(3, 100);
         std::deque<int> a2(3, 100);
         std::deque<int> b1(2, 200);
-        assert((a1 <=> b1) < 0);
-        assert((b1 <=> a1) > 0);
-        assert((a1 <=> a2) == 0);
+        ordered_containers_test(a1, a2, b1);
     }
     { // list
         std::list<int> a1(3, 100);
         std::list<int> a2(3, 100);
         std::list<int> b1(2, 200);
-        assert((a1 <=> b1) < 0);
-        assert((b1 <=> a1) > 0);
-        assert((a1 <=> a2) == 0);
+        ordered_containers_test(a1, a2, b1);
     }
     { // vector
         std::vector<int> a1(3, 100);
         std::vector<int> a2(3, 100);
         std::vector<int> b1(2, 200);
-        assert((a1 <=> b1) < 0);
-        assert((b1 <=> a1) > 0);
-        assert((a1 <=> a2) == 0);
+        ordered_containers_test(a1, a2, b1);
     }
     { // forward_list
         std::forward_list<int> a1(3, 100);
         std::forward_list<int> a2(3, 100);
         std::forward_list<int> b1(2, 200);
-        assert((a1 <=> b1) < 0);
-        assert((b1 <=> a1) > 0);
-        assert((a1 <=> a2) == 0);
+        ordered_containers_test(a1, a2, b1);
     }
     { // unordered_map
-        typedef std::unordered_map<std::string, std::string> stringmap;
-        stringmap a = {{"AAPL", "Apple"}, {"MSFT", "Microsoft"}, {"GOOG", "Google"}};
-        stringmap b = {{"MSFT", "Microsoft"}, {"GOOG", "Google"}, {"AAPL", "Apple"}};
-        stringmap c = {{"MSFT", "Microsoft Corp."}, {"GOOG", "Google Inc."}, {"AAPL", "Apple Inc."}};
-        assert(a == b);
-        assert(b != c);
+        using stringmap = std::unordered_map<std::string, std::string>;
+        stringmap a     = {{"cat", "tabby"}, {"dog", "poodle"}, {"bear", "grizzly"}};
+        stringmap b     = {{"cat", "tabby"}, {"dog", "poodle"}, {"bear", "grizzly"}};
+        stringmap c     = {{"cat", "siamese"}, {"dog", "lab"}, {"bear", "polar"}};
+        unordered_containers_test(a, b, c);
     }
     { // unordered_set
-        std::unordered_set<std::string> a = {"AAPL", "MSFT", "GOOG"}, b = {"MSFT", "GOOG", "AAPL"},
-                                        c = {"MSFT", "GOOG", "AAPL", "ORCL"};
-        assert(a == b);
-        assert(b != c);
+        std::unordered_set<std::string> a = {"cat", "dog", "bear"};
+        std::unordered_set<std::string> b = {"bear", "cat", "dog"};
+        std::unordered_set<std::string> c = {"mouse", "cat", "bear", "dog"};
+        unordered_containers_test(a, b, c);
     }
     { // queue
         std::deque<int> deq1(3, 100);
         std::deque<int> deq2(2, 200);
-        std::queue<int> input1(deq1);
-        std::queue<int> input2(deq2);
-        assert(input1 != input2);
+        std::queue<int> a(deq1);
+        std::queue<int> b(deq1);
+        std::queue<int> c(deq2);
+        unordered_containers_test(a, b, c);
         // assert((input1 <=> input2) != 0);
     }
     { // stack
-        std::stack<int> input1;
-        input1.push(2);
-        input1.push(2);
-        std::stack<int> input2;
-        input2.push(3);
-        input2.push(3);
-        assert(input1 != input2);
+        std::stack<int> a;
+        a.push(2);
+        a.push(2);
+        std::stack<int> b;
+        b.push(2);
+        b.push(2);
+        std::stack<int> c;
+        c.push(3);
+        c.push(3);
+        unordered_containers_test(a, b, c);
         // assert((input1 <=> input2) != 0);
     }
 }
