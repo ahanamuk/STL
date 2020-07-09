@@ -578,7 +578,7 @@ public:
     }
 
     // friend constexpr bool operator==(const array&, const array&) = default;
-    // friend constexpr auto operator<=>(const array&, const array&);
+    // friend constexpr synth_three_way_result<value_type> operator<=>(const array&, const array&);
 
     [[noreturn]] void _Xran() const {
         _Xout_of_range("invalid array<T, N> subscript");
@@ -763,9 +763,6 @@ public:
     _NODISCARD _CONSTEXPR17 const _Ty* data() const noexcept {
         return nullptr;
     }
-
-    // friend constexpr bool operator==(const array&, const array&) = default;
-    // friend constexpr auto operator<=>(const array&, const array&);
 
     [[noreturn]] void _Xran() const {
         _Xout_of_range("invalid array<T, 0> subscript");

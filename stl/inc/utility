@@ -695,6 +695,30 @@ _NODISCARD constexpr bool cmp_greater_equal(const _Ty1 _Left, const _Ty2 _Right)
     return !_STD cmp_less(_Left, _Right);
 }
 
+// FUNCTION TEMPLATE synth_three_way
+template <class _Ty1, class _Ty2>
+_NODISCARD auto synth_three_way(const _Ty1& _Left, const _Ty2& _Right) requires requires {
+    { _Left < _Right }
+    ->_Boolean_testable;
+    { _Right < _Left }
+    ->_Boolean_testable;
+}
+{
+    if constexpr (std::three_way_comparable_with<_Ty1, _Ty2>) {
+        return _Left <=> _Right;
+    } else {
+        if (_Left < _Right)
+            return weak_ordering::less;
+        if (_Right < _Left)
+            return weak_ordering::greater;
+        return weak_ordering::equivalent;
+    }
+};
+
+// FUNCTION TEMPLATE synth_three_way_result
+template <class _Ty1, class _Ty2 = _Ty1>
+using synth_three_way_result = decltype(synth_three_way(declval<_Ty1&>, declval<_Ty2&>));
+
 // FUNCTION TEMPLATE in_range
 template <class _Ty>
 _NODISCARD constexpr _Ty _Min_limit() noexcept { // same as (numeric_limits<_Ty>::min)(), less throughput cost

@@ -1796,9 +1796,10 @@ _NODISCARD bool operator>=(const vector<_Ty, _Alloc>& _Left, const vector<_Ty, _
 
 #if defined(__cpp_impl_three_way_comparison) && defined(__cpp_lib_concepts)
 template <class _Ty, class _Alloc>
-_NODISCARD auto operator<=>(const vector<_Ty, _Alloc>& _Left, const vector<_Ty, _Alloc>& _Right) {
-    return lexicographical_compare_three_way(
-        _Left._Unchecked_begin(), _Left._Unchecked_end(), _Right._Unchecked_begin(), _Right._Unchecked_end());
+_NODISCARD synth_three_way_result<_Ty> operator<=>(
+    const vector<_Ty, _Alloc>& _Left, const vector<_Ty, _Alloc>& _Right) {
+    return _STD lexicographical_compare_three_way(_Left._Unchecked_begin(), _Left._Unchecked_end(),
+        _Right._Unchecked_begin(), _Right._Unchecked_end(), synth_three_way);
 }
 #endif // defined(__cpp_impl_three_way_comparison) && defined(__cpp_lib_concepts)
 
