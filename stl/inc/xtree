@@ -2061,6 +2061,7 @@ _NODISCARD bool operator==(const _Tree<_Traits>& _Left, const _Tree<_Traits>& _R
            && _STD equal(_Left._Unchecked_begin(), _Left._Unchecked_end_iter(), _Right._Unchecked_begin());
 }
 
+#if !_HAS_CXX20 || __cpp_impl_three_way_comparison < 201902L
 template <class _Traits>
 _NODISCARD bool operator!=(const _Tree<_Traits>& _Left, const _Tree<_Traits>& _Right) {
     return !(_Left == _Right);
@@ -2087,6 +2088,15 @@ _NODISCARD bool operator>=(const _Tree<_Traits>& _Left, const _Tree<_Traits>& _R
     return !(_Left < _Right);
 }
 _STD_END
+#endif // !_HAS_CXX20 || __cpp_impl_three_way_comparison < 201902L
+
+#if defined(__cpp_impl_three_way_comparison) && defined(__cpp_lib_concepts)
+template <class _Traits>
+_NODISCARD auto operator<=>(const _Tree<_Traits>& _Left, const _Tree<_Traits>& _Right) {
+    return _STD lexicographical_compare(_Left._Unchecked_begin(), _Left._Unchecked_end_iter(),
+        _Right._Unchecked_begin(), _Right._Unchecked_end_iter(), synth_three_way);
+}
+#endif // defined(__cpp_impl_three_way_comparison) && defined(__cpp_lib_concepts)
 
 #pragma pop_macro("new")
 _STL_RESTORE_CLANG_WARNINGS
