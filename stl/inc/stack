@@ -144,6 +144,7 @@ public:
     friend bool operator>  <>(const stack&, const stack&);
     friend bool operator<= <>(const stack&, const stack&);
     friend bool operator>= <>(const stack&, const stack&);
+    friend compare_three_way_result_t<_Container> operator<=> <>(const stack&, const stack&);
     // clang-format on
 
 protected:

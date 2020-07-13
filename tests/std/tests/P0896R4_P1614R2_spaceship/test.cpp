@@ -44,13 +44,13 @@ void unordered_containers_test(Container something, Container something_equal, C
 }
 
 void ordering_test_cases() {
-    {
-        // array
-        std::array<int, 3> a1 = {100, 100, 100};
-        std::array<int, 3> a2 = {100, 100, 100};
-        std::array<int, 3> b1 = {200, 200};
-        ordered_containers_test(a1, a2, b1);
-    }
+    // {
+    //     // array
+    //     std::array<int, 3> a1 = {100, 100, 100};
+    //     std::array<int, 3> a2 = {100, 100, 100};
+    //     std::array<int, 3> b1 = {200, 200};
+    //     ordered_containers_test(a1, a2, b1);
+    // }
     { // deque
         std::deque<int> a1(3, 100);
         std::deque<int> a2(3, 100);
@@ -92,6 +92,12 @@ void ordering_test_cases() {
         b1["koala"] = 4;
         ordered_containers_test(a1, a2, b1);
     }
+    { // multimap
+        std::multimap<char, int> a1 = {{'a', 1}, {'b', 2}, {'a', 3}};
+        std::multimap<char, int> a2 = {{'a', 1}, {'a', 3}, {'b', 2}};
+        std::multimap<char, int> b1 = {{'z', 4}, {'y', 90}, {'z', 12}};
+        ordered_containers_test(a1, a2, b1);
+    }
     { // set
         std::set<int> a1;
         a1.insert(10);
@@ -103,6 +109,23 @@ void ordering_test_cases() {
 
         std::set<int> b1;
         b1.insert(30);
+        b1.insert(40);
+        ordered_containers_test(a1, a2, b1);
+    }
+    { // multiset
+        std::multiset<int> a1;
+        a1.insert(10);
+        a1.insert(10);
+        a1.insert(20);
+
+        std::multiset<int> a2;
+        a2.insert(10);
+        a2.insert(20);
+        a2.insert(10);
+
+        std::multiset<int> b1;
+        b1.insert(30);
+        b1.insert(40);
         b1.insert(40);
         ordered_containers_test(a1, a2, b1);
     }

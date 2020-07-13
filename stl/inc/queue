@@ -154,6 +154,7 @@ public:
     friend bool operator>  <>(const queue&, const queue&);
     friend bool operator<= <>(const queue&, const queue&);
     friend bool operator>= <>(const queue&, const queue&);
+    friend compare_three_way_result_t<_Container> operator<=> <>(const queue&, const queue&);
     // clang-format on
 
 protected:
