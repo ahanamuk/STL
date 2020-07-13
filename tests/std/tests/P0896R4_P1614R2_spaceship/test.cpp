@@ -25,7 +25,7 @@
 #include <vector>
 
 template <class Container>
-void ordered_containers_test(Container smaller, Container smaller_equal, Container larger) {
+void ordered_containers_test(const Container& smaller, const Container& smaller_equal, const Container& larger) {
     assert(smaller < larger);
     assert(smaller <= larger);
     assert(larger > smaller);
@@ -38,22 +38,20 @@ void ordered_containers_test(Container smaller, Container smaller_equal, Contain
 }
 
 template <class Container>
-void unordered_containers_test(Container smaller, Container smaller_equal, Container larger) {
-    assert(smaller == smaller_equal);
-    assert(smaller != larger);
-    // assert((smaller <=> larger) < 0);
-    // assert((larger <=> smaller) > 0);
-    // assert((smaller_equal <=> smaller) == 0);
+void unordered_containers_test(Container something, Container something_equal, Container different) {
+    assert(something == something_equal);
+    assert(something != different);
 }
 
 void ordering_test_cases() {
     {
-        // Array
-        // std::array<int> input1(3, 100);
-        // std::array<int> input2(2, 200);
-        // assert(input1 != input2);
-        // assert((input1 <=> input2) != 0);
-    } { // deque
+        // array
+        std::array<int, 3> a1 = {100, 100, 100};
+        std::array<int, 3> a2 = {100, 100, 100};
+        std::array<int, 3> b1 = {200, 200};
+        ordered_containers_test(a1, a2, b1);
+    }
+    { // deque
         std::deque<int> a1(3, 100);
         std::deque<int> a2(3, 100);
         std::deque<int> b1(2, 200);
@@ -70,6 +68,11 @@ void ordering_test_cases() {
         std::vector<int> a2(3, 100);
         std::vector<int> b1(2, 200);
         ordered_containers_test(a1, a2, b1);
+
+        std::vector<bool> c1(3, 0);
+        std::vector<bool> c2(3, 0);
+        std::vector<bool> d1(2, 1);
+        ordered_containers_test(c1, c2, d1);
     }
     { // forward_list
         std::forward_list<int> a1(3, 100);
@@ -77,10 +80,43 @@ void ordering_test_cases() {
         std::forward_list<int> b1(2, 200);
         ordered_containers_test(a1, a2, b1);
     }
+    { // map
+        std::map<std::string, int> a1;
+        a1["hi"]   = 1;
+        a1["hola"] = 2;
+        std::map<std::string, int> a2;
+        a2["hi"]   = 1;
+        a2["hola"] = 2;
+        std::map<std::string, int> b1;
+        b1["zoe"]   = 3;
+        b1["koala"] = 4;
+        ordered_containers_test(a1, a2, b1);
+    }
+    { // set
+        std::set<int> a1;
+        a1.insert(10);
+        a1.insert(20);
+
+        std::set<int> a2;
+        a2.insert(10);
+        a2.insert(20);
+
+        std::set<int> b1;
+        b1.insert(30);
+        b1.insert(40);
+        ordered_containers_test(a1, a2, b1);
+    }
     { // unordered_map
         using stringmap = std::unordered_map<std::string, std::string>;
         stringmap a     = {{"cat", "tabby"}, {"dog", "poodle"}, {"bear", "grizzly"}};
-        stringmap b     = {{"cat", "tabby"}, {"dog", "poodle"}, {"bear", "grizzly"}};
+        stringmap b     = {{"dog", "poodle"}, {"bear", "grizzly"}, {"cat", "tabby"}};
+        stringmap c     = {{"cat", "siamese"}, {"dog", "lab"}, {"bear", "polar"}};
+        unordered_containers_test(a, b, c);
+    }
+    { // unordered_multimap
+        using stringmap = std::unordered_multimap<std::string, std::string>;
+        stringmap a     = {{"cat", "tabby"}, {"dog", "poodle"}, {"cat", "siamese"}, {"dog", "poodle"}};
+        stringmap b     = {{"dog", "poodle"}, {"cat", "siamese"}, {"cat", "tabby"}, {"dog", "poodle"}};
         stringmap c     = {{"cat", "siamese"}, {"dog", "lab"}, {"bear", "polar"}};
         unordered_containers_test(a, b, c);
     }
@@ -90,14 +126,19 @@ void ordering_test_cases() {
         std::unordered_set<std::string> c = {"mouse", "cat", "bear", "dog"};
         unordered_containers_test(a, b, c);
     }
+    { // unordered_multiset
+        std::unordered_set<std::string> a = {"cat", "dog", "cat"};
+        std::unordered_set<std::string> b = {"cat", "cat", "dog"};
+        std::unordered_set<std::string> c = {"mouse", "cat", "bear", "dog"};
+        unordered_containers_test(a, b, c);
+    }
     { // queue
         std::deque<int> deq1(3, 100);
         std::deque<int> deq2(2, 200);
         std::queue<int> a(deq1);
         std::queue<int> b(deq1);
         std::queue<int> c(deq2);
-        unordered_containers_test(a, b, c);
-        // assert((input1 <=> input2) != 0);
+        ordered_containers_test(a, b, c);
     }
     { // stack
         std::stack<int> a;
@@ -109,8 +150,7 @@ void ordering_test_cases() {
         std::stack<int> c;
         c.push(3);
         c.push(3);
-        unordered_containers_test(a, b, c);
-        // assert((input1 <=> input2) != 0);
+        ordered_containers_test(a, b, c);
     }
 }
 
