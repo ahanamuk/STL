@@ -577,8 +577,8 @@ public:
         return _Elems;
     }
 
-    friend constexpr bool operator==(const array&, const array&) = default;
-    friend constexpr _Synth_three_way_result<value_type> operator<=>(const array&, const array&);
+    // friend constexpr bool operator==(const array&, const array&) = default;
+    // friend constexpr _Synth_three_way_result<value_type> operator<=>(const array&, const array&);
     // friend constexpr bool operator<=>(const array&, const array&);
 
     [[noreturn]] void _Xran() const {
@@ -777,12 +777,12 @@ _CONSTEXPR20 void swap(array<_Ty, _Size>& _Left, array<_Ty, _Size>& _Right) noex
     return _Left.swap(_Right);
 }
 
-#if !_HAS_CXX20 || __cpp_impl_three_way_comparison < 201902L
 template <class _Ty, size_t _Size>
 _NODISCARD _CONSTEXPR20 bool operator==(const array<_Ty, _Size>& _Left, const array<_Ty, _Size>& _Right) {
     return _STD equal(_Left.begin(), _Left.end(), _Right.begin());
 }
 
+#if !_HAS_CXX20 || __cpp_impl_three_way_comparison < 201902L
 template <class _Ty, size_t _Size>
 _NODISCARD _CONSTEXPR20 bool operator!=(const array<_Ty, _Size>& _Left, const array<_Ty, _Size>& _Right) {
     return !(_Left == _Right);
