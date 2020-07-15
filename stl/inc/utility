@@ -695,6 +695,7 @@ _NODISCARD constexpr bool cmp_greater_equal(const _Ty1 _Left, const _Ty2 _Right)
     return !_STD cmp_less(_Left, _Right);
 }
 
+#if defined(__cpp_impl_three_way_comparison) && defined(__cpp_lib_concepts)
 // STRUCT TEMPLATE _Synth_three_way
 template <class _Ty = void>
 struct _Synth_three_way {
@@ -744,6 +745,7 @@ struct _Synth_three_way<void> {
 // ALIAS TEMPLATE _Synth_three_way_result
 template <class _Ty1, class _Ty2 = _Ty1>
 using _Synth_three_way_result = decltype(_Synth_three_way{}(_STD declval<_Ty1&>(), _STD declval<_Ty2&>()));
+#endif // defined(__cpp_impl_three_way_comparison) && defined(__cpp_lib_concepts)
 
 // FUNCTION TEMPLATE in_range
 template <class _Ty>

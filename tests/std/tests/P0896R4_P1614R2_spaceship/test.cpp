@@ -44,13 +44,23 @@ void unordered_containers_test(Container something, Container something_equal, C
 }
 
 void ordering_test_cases() {
-    // {
-    //     // array
-    //     std::array<int, 3> a1 = {100, 100, 100};
-    //     std::array<int, 3> a2 = {100, 100, 100};
-    //     std::array<int, 3> b1 = {200, 200};
-    //     ordered_containers_test(a1, a2, b1);
-    // }
+    { // constexpr array
+        constexpr std::array<int, 5> a0{{2, 8, 9, 1, 9}};
+        constexpr std::array<int, 3> a1{{2, 8, 9}};
+        constexpr std::array<int, 5> a2{{2, 8, 9, 1, 8}};
+
+        assert((a0 <=> a0) == 0);
+        assert((a1 <=> a1) == 0);
+        assert((a2 <=> a0) < 0);
+        assert((a0 <=> a2) > 0);
+    }
+    {
+        // array
+        std::array<int, 3> a1 = {100, 100, 100};
+        std::array<int, 3> a2 = {100, 100, 100};
+        std::array<int, 3> b1 = {200, 200};
+        ordered_containers_test(a1, a2, b1);
+    }
     { // deque
         std::deque<int> a1(3, 100);
         std::deque<int> a2(3, 100);
