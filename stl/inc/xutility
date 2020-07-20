@@ -4195,7 +4195,7 @@ namespace _Unreachable_sentinel_detail {
         _NODISCARD friend constexpr bool operator==(const unreachable_sentinel_t&, const _Winc&) noexcept {
             return false;
         }
-#if !defined(__cpp_impl_three_way_comparison) || __cpp_impl_three_way_comparison < 201902L
+#if !_HAS_CXX20
         template <weakly_incrementable _Winc>
         _NODISCARD friend constexpr bool operator==(const _Winc&, const unreachable_sentinel_t&) noexcept {
             return false;
@@ -4209,7 +4209,7 @@ namespace _Unreachable_sentinel_detail {
         _NODISCARD friend constexpr bool operator!=(const _Winc&, const unreachable_sentinel_t&) noexcept {
             return true;
         }
-#endif // !defined(__cpp_impl_three_way_comparison) || __cpp_impl_three_way_comparison < 201902L
+#endif // !_HAS_CXX20
     };
 } // namespace _Unreachable_sentinel_detail
 struct unreachable_sentinel_t : _Unreachable_sentinel_detail::_Base {}; // TRANSITION, /permissive-
